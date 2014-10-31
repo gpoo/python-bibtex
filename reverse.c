@@ -127,7 +127,7 @@ bibtex_reverse_field (BibtexField * field,
     if (request == NULL) {
 	request = recode_new_request (outer);
 	g_assert (request != NULL);
-	if (! recode_scan_request (request, "latin1..latex")) {
+	if (! recode_scan_request (request, "UTF-8..latex")) {
 	    g_error ("can't create recoder");
 	}
     }

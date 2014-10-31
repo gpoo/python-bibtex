@@ -1,4 +1,4 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 """ Run is the main function that will check if the recode and bibtex
 modules are working """
 
@@ -13,7 +13,7 @@ def check_recode ():
         raise RuntimeError ('the recode library is probably broken.')
 
     # First, check if the recode version has the famous 3.6 bug
-    rq = _recode.request ('latin1..latex')
+    rq = _recode.request ('UTF-8..latex')
     
     if _recode.recode (rq, 'abc') != 'abc':
         raise RuntimeError ('the _recode module is broken.')
@@ -140,7 +140,7 @@ def check_bibtex ():
         field = _bibtex.reverse(t, True, text)
         return _bibtex.get_latex(parser, field, t)
 
-    text = 'éssai A {} toto~tutu'
+    text = 'Ã©ssai A {} toto~tutu'
     for t, r in ((0, r'\'essai A \{\} toto~tutu'),
                  (2, r'\'essai {A} \{\} toto~tutu'),
                  (4, text)):
