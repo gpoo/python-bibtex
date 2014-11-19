@@ -24,6 +24,20 @@ bibtex = [
     'struct.c'
     ]
 
+newbibtex = [
+    'accents.c',
+    'author.c',
+    'bibparse.c',
+    'biblex.c',
+    'bibtex.c',
+    'newbibtexmodule.c',
+    'entry.c',
+    'field.c',
+    'reverse.c',
+    'source.c',
+    'stringutils.c',
+    'struct.c'
+    ]
 
 def error (msg):
     sys.stderr.write ('setup.py: error: %s\n' % msg)
@@ -119,7 +133,7 @@ class run_check (Command):
 
     """ Run all of the tests for the package using uninstalled (local)
     files """
-    
+
     description = "Automatically run the test suite for the package."
 
     user_options = []
@@ -137,7 +151,7 @@ class run_check (Command):
     def run(self):
         # Ensure the extension is built
         self.run_command ('build')
-        
+
         # test the uninstalled extensions
         libdir = os.path.join (os.getcwd (), self.build_lib)
 
@@ -155,7 +169,7 @@ class run_check (Command):
         if failures > 0:
             raise DistutilsExecError ('check failed.')
         return
-    
+
 
 
 class run_install (base_install):
@@ -163,11 +177,11 @@ class run_install (base_install):
     def run(self):
         # The code must pass the tests before being installed
         self.run_command ('check')
-        
+
         base_install.run (self)
         return
-    
-        
+
+
 # Actual compilation
 
 setup (name = "python-bibtex",
@@ -179,10 +193,10 @@ setup (name = "python-bibtex",
        url = 'http://pybliographer.org/',
 
        license = 'GPL',
-       
+
        cmdclass = { 'check':   run_check,
                     'install': run_install },
-       
+
        long_description = \
 '''
 This module contains two extensions needed for pybliographer:
@@ -200,6 +214,12 @@ It requires the following libraries to be installed:
        ext_modules = [
 
     Extension("_bibtex", bibtex,
+              include_dirs = includes,
+              library_dirs = libdirs,
+              define_macros = [('G_LOG_DOMAIN', '"BibTeX"')],
+              libraries = libs + ['recode']),
+
+    Extension("bibtex", newbibtex,
               include_dirs = includes,
               library_dirs = libdirs,
               define_macros = [('G_LOG_DOMAIN', '"BibTeX"')],
