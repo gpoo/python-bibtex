@@ -228,3 +228,151 @@ bibtex_source_set_offset (BibtexSource * file,
 
     bibtex_analyzer_initialize (file);
 }
+
+static void
+add_to_dico (gpointer key, gpointer value, gpointer user) {
+    gchar * val = (gchar *) key;
+    BibtexField * field;
+    BibtexStruct * structure;
+
+    if ((structure = g_hash_table_lookup ((GHashTable *) user, val)) == NULL) {
+	val = g_strdup ((char *) key);
+    }
+    else {
+	bibtex_struct_destroy (structure, TRUE);
+    }
+
+    field = (BibtexField *) value;
+
+    gchar* c = val;
+    for (; *c != '\0'; *c = g_ascii_tolower(*c), c++);
+
+    g_hash_table_insert ((GHashTable *) user, val, field->structure);
+}
+
+BibtexEntry *
+bibtex_source_next_entry (BibtexSource * file,
+			  gboolean filter) {
+    BibtexEntry * ent;
+
+    int offset;
+
+    g_return_val_if_fail (file != NULL, NULL);
+
+    if (file->eof) return NULL;
+
+    offset = file->offset;
+    file->error = FALSE;
+
+    do {
+	ent = bibtex_analyzer_parse (file);
+
+	if (ent) {
+	    /* Incrementer les numeros de ligne */
+	    file->line += ent->length;
+	    
+	    ent->offset = offset;
+	    ent->length = file->offset - offset;
+	    
+	    /* Rajouter les definitions au dictionnaire, si necessaire */
+	    if (ent->type) {
+		if (g_ascii_strcasecmp (ent->type, "string") == 0) {
+
+		    g_hash_table_foreach (ent->table, add_to_dico, 
+					  file->table);
+		    
+		    if (filter) {
+			/* Return nothing, we store it as string database */
+			bibtex_entry_destroy (ent, FALSE);
+			ent = NULL;
+		    }
+		}
+		else {
+		    do {
+			if (g_ascii_strcasecmp (ent->type, "comment") == 0) {
+			    bibtex_entry_destroy (ent, TRUE);
+			    ent = NULL;
+			    
+			    break;
+			}
+
+			if (g_ascii_strcasecmp (ent->type, "preamble") == 0) {
+			    if (filter) {
+				bibtex_warning ("%s:%d: skipping preamble",
+						file->name, file->line);
+				
+				bibtex_entry_destroy (ent, TRUE);
+				ent = NULL;
+			    }
+			    else {
+				ent->textual_preamble =
+				    bibtex_struct_as_bibtex (ent->preamble);
+			    }
+			    break;
+			}
+
+			/* normal case; convert preamble into entry name */
+			if (ent->preamble) {
+			    switch (ent->preamble->type) {
+			    case BIBTEX_STRUCT_REF:
+				/* alphanumeric identifiers */
+				ent->name = 
+				    g_strdup (ent->preamble->value.ref);
+				break;
+			    case BIBTEX_STRUCT_TEXT:
+				/* numeric identifiers */
+				ent->name = 
+				    g_strdup (ent->preamble->value.text);
+				break;
+
+			    default:
+				if (file->strict) {
+				    bibtex_error ("%s:%d: entry has a weird name", 
+						  file->name, file->line);
+				    bibtex_entry_destroy (ent, TRUE);
+				    file->error = TRUE;
+				    
+				    return NULL;
+				}
+				else {
+				    bibtex_warning ("%s:%d: entry has a weird name", 
+						    file->name, file->line);
+				    bibtex_struct_destroy (ent->preamble, TRUE);
+				    ent->preamble = NULL;
+				    ent->name = NULL;
+				}
+				break;
+			    }
+			}
+			else {
+			    if (file->strict) {
+				bibtex_error ("%s:%d: entry has no identifier", 
+					      file->name,
+					      file->line);
+				
+				bibtex_entry_destroy (ent, TRUE);
+				file->error = TRUE;
+				
+				return NULL;
+			    }
+			    else {
+				bibtex_warning ("%s:%d: entry has no identifier", 
+						file->name,
+						file->line);
+			    }
+			}
+		    } while (0);
+		}
+	    }
+	}
+	else {
+	    /* No ent, there has been a problem */
+	    return NULL;
+	}
+    } 
+    while (!ent);
+
+    return ent;
+}
+
+
