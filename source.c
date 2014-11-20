@@ -375,4 +375,100 @@ bibtex_source_next_entry (BibtexSource * file,
     return ent;
 }
 
+/* Simplification of bibtex_source_next_entry */
+BibtexEntry *
+bibtex_source_next_entry_unfiltered (BibtexSource *file)
+{
+    BibtexEntry *entry;
+
+    int offset;
+
+    g_return_val_if_fail (file != NULL, NULL);
+
+    if (file->eof)
+        return NULL;
+
+    offset = file->offset;
+    file->error = FALSE;
+
+    do {
+        entry = bibtex_analyzer_parse (file);
+
+        /* No entry, there has been a problem */
+        if (! entry)
+            return NULL;
+
+        /* Increment the line number */
+        file->line += entry->length;
+
+        entry->offset = offset;
+        entry->length = file->offset - offset;
+
+        /* Rajouter les definitions au dictionnaire, if needed */
+        if (entry->type) {
+            if (g_ascii_strcasecmp (entry->type, "string") == 0) {
+                g_hash_table_foreach (entry->table, add_to_dico, file->table);
+		continue;
+            }
+
+            do {
+                if (g_ascii_strcasecmp (entry->type, "comment") == 0) {
+                    bibtex_entry_destroy (entry, TRUE);
+                    entry = NULL;
+                    break;
+                }
+
+                if (g_ascii_strcasecmp (entry->type, "preamble") == 0) {
+                    entry->textual_preamble =
+                            bibtex_struct_as_bibtex (entry->preamble);
+                    break;
+                }
+
+                /* normal case; convert preamble into entry name */
+                if (entry->preamble) {
+                    switch (entry->preamble->type) {
+                    case BIBTEX_STRUCT_REF:
+                        /* alphanumeric identifiers */
+                        entry->name = g_strdup (entry->preamble->value.ref);
+			break;
+                    case BIBTEX_STRUCT_TEXT:
+                        /* numeric identifiers */
+                        entry->name = g_strdup (entry->preamble->value.text);
+                        break;
+                    default:
+                        if (file->strict) {
+                            bibtex_error ("%s:%d: entry has a weird name",
+                                          file->name, file->line);
+                            bibtex_entry_destroy (entry, TRUE);
+                            file->error = TRUE;
+                            return NULL;
+                        } else {
+                            bibtex_warning ("%s:%d: entry has a weird name",
+                                            file->name, file->line);
+                            bibtex_struct_destroy (entry->preamble, TRUE);
+                            entry->preamble = NULL;
+                            entry->name = NULL;
+                        }
+                        break;
+                    }
+                } else {
+                    if (file->strict) {
+                        bibtex_error ("%s:%d: entry has no identifier",
+                                      file->name,
+                                      file->line);
+                        bibtex_entry_destroy (entry, TRUE);
+                        file->error = TRUE;
+                        return NULL;
+                    } else {
+                        bibtex_warning ("%s:%d: entry has no identifier",
+                                        file->name,
+                                        file->line);
+                    }
+                }
+             } while (0);
+        }
+    } while (! entry);
+
+    return entry;
+}
 

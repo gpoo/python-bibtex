@@ -227,6 +227,8 @@ extern "C" {
 
     BibtexEntry *  bibtex_source_next_entry (BibtexSource * file, gboolean filter);
 
+    BibtexEntry *  bibtex_source_next_entry_unfiltered (BibtexSource *file);
+
     void           bibtex_source_rewind (BibtexSource * file);
 
     gint           bibtex_source_get_offset (BibtexSource * file);
