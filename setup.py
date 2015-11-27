@@ -111,7 +111,7 @@ def rename (src, dst):
 
 if rebuild ('bibparse.y', ['bibparse.c',
                            'bibparse.h']):
-    print "rebuilding from bibparse.y"
+    print ("rebuilding from bibparse.y")
 
     os.system ('bison -y -d -t -p bibtex_parser_ bibparse.y')
 
@@ -120,7 +120,7 @@ if rebuild ('bibparse.y', ['bibparse.c',
 
 
 if rebuild ('biblex.l', ['biblex.c']):
-    print "rebuilding from biblex.l"
+    print ("rebuilding from biblex.l")
 
     os.system ('flex -Pbibtex_parser_ biblex.l')
 
@@ -162,7 +162,7 @@ class run_check (Command):
         try:
             failures = testsuite.run ()
 
-        except RuntimeError, msg:
+        except RuntimeError as msg:
             sys.stderr.write ('error: %s\n' % msg)
             raise DistutilsExecError ('please consult the "Troubleshooting" section in the README file.')
 
@@ -213,19 +213,25 @@ It requires the following libraries to be installed:
 
        ext_modules = [
 
-    Extension("_bibtex", bibtex,
-              include_dirs = includes,
-              library_dirs = libdirs,
-              define_macros = [('G_LOG_DOMAIN', '"BibTeX"')],
-              libraries = libs + ['recode']),
 
     Extension("bibtex", newbibtex,
               include_dirs = includes,
               library_dirs = libdirs,
               define_macros = [('G_LOG_DOMAIN', '"BibTeX"')],
-              libraries = libs + ['recode']),
+              libraries = libs + ['recode'])
+    ])
 
+'''
+    Extension("_bibtex", bibtex,
+              include_dirs = includes,
+              library_dirs = libdirs,
+              define_macros = [('G_LOG_DOMAIN', '"BibTeX"')],
+              libraries = libs + ['recode']),
+'''
+
+'''
     Extension("_recode", ["recodemodule.c"],
               include_dirs = includes,
               libraries = ['recode'])
-    ])
+'''
+

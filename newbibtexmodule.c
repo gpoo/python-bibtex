@@ -3,7 +3,7 @@
  This file is part of pybliographer
 
  Copyright (C) 1998-1999 Frederic GOBRY <gobry@idiap.ch>
- Copyright (C) 2014 Germán Poo-Caamaño <gpoo@gnome.org>
+ Copyright (C) 2014-2015 Germán Poo-Caamaño <gpoo@gnome.org>
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -57,15 +57,15 @@ static void destroy_field (PyBibtexField_Object * self)
 static char PyBibtexField_Type__doc__[]  = "This is the type of an internal BibTeX field";
 
 static PyTypeObject PyBibtexField_Type = {
-  PyVarObject_HEAD_INIT(NULL, 0)
-  "BibtexField",           /*tp_name*/
+  PyVarObject_HEAD_INIT(&PyType_Type, 0)
+  "BibtexField",                  /*tp_name*/
   sizeof(PyBibtexField_Object) ,  /*tp_basicsize*/
   0,                              /*tp_itemsize*/
   (destructor)destroy_field,      /*tp_dealloc*/
   (printfunc)0,                   /*tp_print*/
   (getattrfunc)0,                 /*tp_getattr*/
   (setattrfunc)0,                 /*tp_setattr*/
-  (cmpfunc)0,                     /*tp_compare*/
+  0,                              /*tp_compare*/
   (reprfunc)0,                    /*tp_repr*/
   0,                              /*tp_as_number*/
   0,                              /*tp_as_sequence*/
@@ -257,7 +257,7 @@ fill_dico (gpointer key, gpointer value, gpointer user)
     PyObject * dico = (PyObject *) user;
     PyObject * tmp1, * tmp2;
 
-    tmp1 = PyString_FromString ((char *) key);
+    tmp1 = PyUnicode_FromString ((char *) key);
     tmp2 = (PyObject *) PyObject_NEW (PyBibtexField_Object, & PyBibtexField_Type);
     /* this only happens when OOM'ing, not much to salvage except not crashing */
     if (tmp1 == NULL || tmp2 == NULL) return;
@@ -335,7 +335,7 @@ bibtex_parser_field_reverse (PyObject *self, PyObject *args)
         tmp = PyObject_Str (tuple);
         if (tmp == NULL) return NULL;
 
-        field->text = g_strdup (PyString_AsString (tmp));
+        field->text = g_strdup (PyBytes_AS_STRING (tmp));
         Py_DECREF (tmp);
         break;
 
@@ -344,21 +344,21 @@ bibtex_parser_field_reverse (PyObject *self, PyObject *args)
         if (tmp == NULL) return NULL;
 
         if (tmp != Py_None)
-            field->field.date.year  = PyInt_AsLong (tmp);
+            field->field.date.year  = PyLong_AsLong (tmp);
         Py_DECREF (tmp);
 
         tmp = PyObject_GetAttrString (tuple, "month");
         if (tmp == NULL) return NULL;
 
         if (tmp != Py_None)
-            field->field.date.month = PyInt_AsLong (tmp);
+            field->field.date.month = PyLong_AsLong (tmp);
         Py_DECREF (tmp);
 
         tmp = PyObject_GetAttrString (tuple, "day");
         if (tmp == NULL) return NULL;
 
         if (tmp != Py_None)
-            field->field.date.day   = PyInt_AsLong (tmp);
+            field->field.date.day   = PyLong_AsLong (tmp);
         Py_DECREF (tmp);
         break;
 
@@ -377,28 +377,28 @@ bibtex_parser_field_reverse (PyObject *self, PyObject *args)
 
             tmp = PyObject_GetAttrString (authobj, "last");
             if (tmp != Py_None) {
-                auth->last = g_strdup (PyString_AsString (tmp));
+                auth->last = g_strdup (PyBytes_AS_STRING (tmp));
             } else {
                 auth->last = NULL;
             }
             Py_DECREF (tmp);
             tmp = PyObject_GetAttrString (authobj, "first");
             if (tmp != Py_None) {
-                auth->first = g_strdup (PyString_AsString (tmp));
+                auth->first = g_strdup (PyBytes_AS_STRING (tmp));
             } else {
                 auth->first = NULL;
             }
             Py_DECREF (tmp);
             tmp = PyObject_GetAttrString (authobj, "lineage");
             if (tmp != Py_None) {
-                auth->lineage = g_strdup (PyString_AsString (tmp));
+                auth->lineage = g_strdup (PyBytes_AS_STRING (tmp));
             } else {
                 auth->lineage = NULL;
             }
             Py_DECREF (tmp);
             tmp = PyObject_GetAttrString (authobj, "honorific");
             if (tmp != Py_None) {
-                auth->honorific = g_strdup (PyString_AsString (tmp));
+                auth->honorific = g_strdup (PyBytes_AS_STRING (tmp));
             } else {
                 auth->honorific = NULL;
             }
@@ -645,28 +645,28 @@ bibtex_parser_field_expand (BibtexParser *self, PyObject *args)
             author = &g_array_index (field->field.author,
                                      BibtexAuthor, i);
             if (author->honorific) {
-                auth[0] = PyString_FromString (author->honorific);
+                auth[0] = PyUnicode_FromString (author->honorific);
             } else {
                 auth[0] = Py_None;
                 Py_INCREF (Py_None);
             }
 
             if (author->first) {
-                auth [1] = PyString_FromString (author->first);
+                auth [1] = PyUnicode_FromString (author->first);
             } else {
                 auth[1] = Py_None;
                 Py_INCREF (Py_None);
             }
 
             if (author->last) {
-                auth[2] = PyString_FromString (author->last);
+                auth[2] = PyUnicode_FromString (author->last);
             } else {
                 auth[2] = Py_None;
                 Py_INCREF (Py_None);
             }
 
             if (author->lineage) {
-                auth[3] = PyString_FromString (author->lineage);
+                auth[3] = PyUnicode_FromString (author->lineage);
             } else {
                 auth[3] = Py_None;
                 Py_INCREF (Py_None);
@@ -917,7 +917,19 @@ static PyTypeObject BibtexParser_Type = {
 
 
 /* Main program */
-static PyMethodDef bibtexMeth [] = {
+
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*) PyModule_GetState (m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
+static PyMethodDef bibtex_methods [] = {
     { "new_from_file", bibtex_parser_open_file, METH_VARARGS,
 	               bibtex_parser_open_file_doc },
     { "new_from_string", bibtex_parser_new_from_string, METH_VARARGS,
@@ -929,16 +941,49 @@ static char bibtex_doc[] =
     "A BibTeX parser\n\n"
     "This module provides the components needed to parse a BibTex file\n";
 
+#if PY_MAJOR_VERSION >= 3
+
+static int bibtex_traverse (PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT (GETSTATE(m)->error);
+    return 0;
+}
+
+static int bibtex_clear (PyObject *m) {
+    Py_CLEAR (GETSTATE(m)->error);
+    return 0;
+}
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "bibtex",
+        bibtex_doc,
+        sizeof (struct module_state),
+        bibtex_methods,
+        NULL,
+        bibtex_traverse,
+        bibtex_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyObject *
+PyInit_bibtex (void)
+
+#else
+#define INITERROR return
+
 void
 initbibtex (void)
+#endif
 {
-    PyObject *m;
+    PyObject *module;
 
     // PyBibtexSource_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready (&BibtexParser_Type) < 0)
-        return;
+        INITERROR;
 
-    PyBibtexField_Type.ob_type =  &PyType_Type;
+    //PyBibtexField_Type.ob_type =  &PyType_Type;
 
     bibtex_set_default_handler ();
 
@@ -946,14 +991,30 @@ initbibtex (void)
                        py_message_handler, NULL);
     g_log_set_always_fatal (G_LOG_LEVEL_CRITICAL);
 
-    m = Py_InitModule3 ("bibtex", bibtexMeth, bibtex_doc);
+#if PY_MAJOR_VERSION >= 3
+    module = PyModule_Create(&moduledef);
+#else
+    module = Py_InitModule3 ("bibtex", bibtex_methods, bibtex_doc);
+#endif
 
-    if (m == NULL)
-        return;
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("bibtex.Error", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
 
     Py_INCREF (&BibtexParser_Type);
-    PyModule_AddObject (m, "BibtexParser",
+    PyModule_AddObject (module, "BibtexParser",
                         (PyObject *) &BibtexParser_Type);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
+
 }
 
 /* vim: set ts=4 sw=4 st=4 expandtab */
