@@ -639,48 +639,94 @@ bibtex_parser_field_expand (BibtexParser *self, PyObject *args)
         break;
 
     case BIBTEX_AUTHOR:
+        printf("expand author\n");
         liste = PyList_New (field->field.author->len);
+
+        PyObject * __check(gchar *result) {
+            PyObject *v = Py_None;
+            printf("check\n");
+            printf("%s\n", result);
+            if (result != NULL && !PyBytes_Check(result) &&
+                !PyUnicode_Check(result)) {
+                v =  Py_None;
+            }
+            printf ("1\n");
+            //if (result != NULL && PyBytes_Check(result)) {
+            //  v = PyBytes_FromString(result);
+            //}
+            printf ("2\n");
+            if (result != NULL && PyUnicode_Check(result)) {
+                v = PyUnicode_FromString(result);
+            }
+            printf ("3\n");
+            return v;
+        }
 
         for (i = 0; i < field->field.author->len; i++) {
             author = &g_array_index (field->field.author,
                                      BibtexAuthor, i);
-            if (author->honorific) {
-                auth[0] = PyUnicode_FromString (author->honorific);
-            } else {
-                auth[0] = Py_None;
-                Py_INCREF (Py_None);
-            }
 
+            auth[1] = __check(author->first);
+            if (auth[1] == Py_None) {
+              printf ("Incr PyNone\n");
+              Py_INCREF (Py_None);
+            }
+          /*
             if (author->first) {
                 auth [1] = PyUnicode_FromString (author->first);
             } else {
                 auth[1] = Py_None;
                 Py_INCREF (Py_None);
-            }
-
+            }*/
+            auth[2] = __check(author->last);
+            if (auth[2] == Py_None) {
+              printf ("Incr PyNone\n");
+              Py_INCREF (Py_None);
+            }/*
             if (author->last) {
                 auth[2] = PyUnicode_FromString (author->last);
             } else {
                 auth[2] = Py_None;
                 Py_INCREF (Py_None);
-            }
+            }*/
 
+            auth[0] = __check(author->honorific);
+            if (auth[0] == Py_None) {
+              printf ("Incr PyNone\n");
+              Py_INCREF (Py_None);
+            } /*
+            if (author->honorific) {
+                auth[0] = PyUnicode_FromString (author->honorific);
+            } else {
+                auth[0] = Py_None;
+                Py_INCREF (Py_None);
+            } */
+
+            auth[3] = __check(author->lineage);
+            if (auth[3] == Py_None) {
+              printf ("Incr PyNone\n");
+              Py_INCREF (Py_None);
+            }
+            /*
             if (author->lineage) {
                 auth[3] = PyUnicode_FromString (author->lineage);
             } else {
                 auth[3] = Py_None;
                 Py_INCREF (Py_None);
-            }
+            }*/
 
+            printf("done 1\n");
             PyList_SetItem (liste, i, Py_BuildValue ("OOOO", auth[0],
                                                      auth[1], auth[2],
                                                      auth[3]));
 
+            printf("done 2\n");
             for (j = 0; j < 4; j ++) {
                 Py_DECREF (auth[j]);
             }
         }
 
+        printf("done 3\n");
         tmp = Py_BuildValue ("iisO", field->type, field->loss,
                              field->text, liste);
         Py_DECREF (liste);
@@ -774,7 +820,6 @@ bibtex_parser_open_file (PyObject *o, PyObject *args)
         bibtex_source_destroy (db, TRUE);
         return NULL;
     }
-
     self->db = db;
     bibtex_source_rewind (self->db);
 
@@ -912,7 +957,7 @@ static PyTypeObject BibtexParser_Type = {
   0,                                    /* tp_dictoffset */
   (initproc) bibtex_parser_init,        /* tp_init */
   0,                                    /* tp_alloc */
-  bibtex_parser_new,                     /* tp_new */
+  bibtex_parser_new,                    /* tp_new */
 };
 
 

@@ -171,6 +171,48 @@ class run_check (Command):
         return
 
 
+class run_foo (Command):
+
+    """ Run all of the tests for the package using uninstalled (local)
+    files """
+
+    description = "Automatically run the test suite for the package."
+
+    user_options = []
+
+    def initialize_options(self):
+        self.build_lib = None
+        return
+
+
+    def finalize_options(self):
+        # Obtain the build_lib directory from the build command
+        self.set_undefined_options ('build', ('build_lib', 'build_lib'))
+        return
+
+    def run(self):
+        # Ensure the extension is built
+        self.run_command ('build')
+
+        # test the uninstalled extensions
+        libdir = os.path.join (os.getcwd (), self.build_lib)
+
+        sys.path.insert (0, libdir)
+
+        import testfoo
+
+        try:
+            failures = testfoo.run ()
+
+        except RuntimeError as msg:
+            sys.stderr.write ('error: %s\n' % msg)
+            raise DistutilsExecError ('please consult the "Troubleshooting" section in the README file.')
+
+        if failures > 0:
+            raise DistutilsExecError ('check failed.')
+        return
+
+
 
 class run_install (base_install):
 
@@ -194,7 +236,7 @@ setup (name = "python-bibtex",
 
        license = 'GPL',
 
-       cmdclass = { 'check':   run_check,
+       cmdclass = { 'check':   run_check, 'foo': run_foo,
                     'install': run_install },
 
        long_description = \
